@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fahh Button</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #1e1e2f 0%, #2a2a40 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+
+        .container {
+            position: relative;
+            text-align: center;
+        }
+
+        #fahh-btn {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: none;
+            background: radial-gradient(circle at 30% 30%, #ff6b6b, #ee5253);
+            color: white;
+            font-size: 2rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 
+                0 10px 20px rgba(0,0,0,0.3),
+                inset 0 5px 15px rgba(255,255,255,0.4),
+                inset 0 -5px 15px rgba(0,0,0,0.2);
+            transition: transform 0.1s, box-shadow 0.1s;
+            outline: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        #fahh-btn:active {
+            transform: scale(0.95);
+            box-shadow: 
+                0 5px 10px rgba(0,0,0,0.3),
+                inset 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple 0.6s linear;
+            background-color: rgba(255, 255, 255, 0.4);
+            pointer-events: none;
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button id="fahh-btn">FAHH</button>
+    </div>
+
+    <script>
+        const btn = document.getElementById('fahh-btn');
+        // Preload doesn't work well for multi-instance, but we can fetch it to cache.
+        const audioSrc = 'fahhh.mp3';
+        
+        // Simple preloader
+        const tempAudio = new Audio(audioSrc);
+        tempAudio.load();
+
+        function createRipple(event) {
+            const circle = document.createElement("span");
+            const diameter = Math.max(btn.clientWidth, btn.clientHeight);
+            const radius = diameter / 2;
+
+            const rect = btn.getBoundingClientRect();
+            
+            circle.style.width = circle.style.height = `${diameter}px`;
+            circle.style.left = `${event.clientX - rect.left - radius}px`;
+            circle.style.top = `${event.clientY - rect.top - radius}px`;
+            circle.classList.add("ripple");
+
+            const existingRipple = btn.getElementsByClassName("ripple")[0];
+            if (existingRipple) {
+                existingRipple.remove();
+            }
+
+            btn.appendChild(circle);
+        }
+
+        btn.addEventListener('mousedown', (e) => {
+            // Play audio - using new Audio() creates a new instance every time
+            // allowing overlapping sounds for rapid clicking.
+            const sound = new Audio(audioSrc);
+            sound.volume = 1.0;
+            sound.play().catch(error => console.log('Audio play failed:', error));
+            
+            // Visual effect
+            createRipple(e);
+        });
+
+        // Add keyboard support for accessibility/fun
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                btn.classList.add('active'); // Simulate active state if we had a class
+                // Trigger the click logic
+                const rect = btn.getBoundingClientRect();
+                const fakeEvent = {
+                    clientX: rect.left + rect.width / 2,
+                    clientY: rect.top + rect.height / 2
+                };
+                createRipple(fakeEvent);
+                
+                const sound = new Audio(audioSrc);
+                sound.play().catch(error => console.log('Audio play failed:', error));
+            }
+        });
+    </script>
+</body>
+</html>
