@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaTeX Editor | Overleaf-style</title>
+    <meta name="author" content="Vaishnav Mankar">
+
+    <style>
+        :root {
+            --primary: #138A36;
+            --primary-hover: #0F7129;
+            --editor-bg: #1e1e1e;
+            --editor-text: #d4d4d4;
+            --preview-bg: #ffffff;
+            --toolbar-bg: #2d2d2d;
+            --border-color: #3d3d3d;
+            --error-bg: #ff4444;
+            --success-bg: #4CAF50;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Computer Modern', 'Latin Modern Roman', 'Times New Roman', serif;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background: var(--editor-bg);
+        }
+
+        /* Toolbar */
+        .toolbar {
+            background: var(--toolbar-bg);
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-bottom: 1px solid var(--border-color);
+            z-index: 100;
+        }
+
+        .logo {
+            font-weight: 700;
+            font-size: 1.1rem;
+            flex-grow: 1;
+            color: var(--success-bg);
+        }
+
+        .compile-status {
+            font-size: 0.85rem;
+            padding: 6px 12px;
+            border-radius: 4px;
+            background: #555;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .compile-status.show {
+            display: flex;
+        }
+
+        .compile-status.compiling {
+            background: #FFB300;
+            color: #000;
+        }
+
+        .compile-status.success {
+            background: var(--success-bg);
+            color: white;
+        }
+
+        .compile-status.error {
+            background: var(--error-bg);
+            color: white;
+        }
+
+        .spinner {
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(0, 0, 0, 0.3);
+            border-top-color: #000;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: var(--primary-hover);
+        }
+
+        .btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .btn-secondary {
+            background: #555;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #666;
+        }
+
+        .btn-compile {
+            background: var(--success-bg);
+        }
+
+        .btn-compile:hover:not(:disabled) {
+            background: #45a049;
+        }
+
+        /* Split Pane Container */
+        .split-container {
+            display: flex;
+            height: calc(100vh - 50px);
+            overflow: hidden;
+        }
+
+        /* Editor Pane */
+        .editor-pane {
+            width: 50%;
+            background: var(--editor-bg);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .editor-header {
+            background: #252526;
+            color: #ccc;
+            padding: 10px 15px;
+            font-size: 0.85rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .editor-info {
+            display: flex;
+            gap: 15px;
+            font-size: 0.8rem;
+            color: #858585;
+        }
+
+        .editor-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .line-numbers {
+            background: #1e1e1e;
+            color: #858585;
+            padding: 20px 10px 20px 15px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            text-align: right;
+            user-select: none;
+            width: 50px;
+            flex-shrink: 0;
+            overflow: hidden;
+            white-space: pre;
+        }
+
+        #editor {
+            flex: 1;
+            background: var(--editor-bg);
+            color: var(--editor-text);
+            padding: 20px 20px 20px 10px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            border: none;
+            outline: none;
+            resize: none;
+            overflow-y: auto;
+            overflow-x: auto;
+            tab-size: 4;
+            white-space: pre;
+        }
+
+        #editor::selection {
+            background: #264f78;
+        }
+
+        /* Preview Pane */
+        .preview-pane {
+            width: 50%;
+            background: #525252;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .preview-header {
+            background: #252526;
+            color: #ccc;
+            padding: 10px 15px;
+            font-size: 0.85rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .preview-container {
+            flex: 1;
+            overflow: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: #525252;
+        }
+
+        #pdf-viewer {
+            background: white;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            height: 100%;
+            display: none;
+            border: none;
+        }
+
+        #pdf-viewer embed {
+            width: 100%;
+            height: 100%;
+        }
+
+        .preview-placeholder {
+            text-align: center;
+            color: #ccc;
+        }
+
+        .preview-placeholder h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #999;
+        }
+
+        .preview-placeholder p {
+            color: #777;
+        }
+
+        /* Error Panel */
+        .error-panel {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #2d2d2d;
+            color: #ff6b6b;
+            padding: 15px 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            border-top: 2px solid var(--error-bg);
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            display: none;
+            z-index: 10;
+        }
+
+        .error-panel.show {
+            display: block;
+        }
+
+        .error-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: var(--error-bg);
+            font-size: 13px;
+        }
+
+        .error-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #ff6b6b;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 5px;
+        }
+
+        /* Resizer */
+        .resizer {
+            width: 4px;
+            background: var(--border-color);
+            cursor: col-resize;
+            position: relative;
+            z-index: 10;
+        }
+
+        .resizer:hover {
+            background: var(--primary);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="toolbar">
+        <div class="logo">📝 LaTeX Editor</div>
+
+        <div class="compile-status" id="compileStatus">
+            <span id="statusText">Ready</span>
+        </div>
+
+        <label>
+            <input type="checkbox" id="autoCompile" checked>
+            <span style="font-size: 0.85rem;">Auto-compile</span>
+        </label>
+
+        <button class="btn btn-secondary" onclick="loadFile()">Import .tex</button>
+        <button class="btn btn-secondary" onclick="downloadLatex()">Export .tex</button>
+        <button class="btn btn-compile" id="compileBtn" onclick="compileLatex()">
+            Recompile (Ctrl+S)
+        </button>
+        <button class="btn" onclick="downloadPDF()" id="downloadBtn" style="display: none;">
+            Download PDF
+        </button>
+
+        <input type="file" id="fileInput" accept=".tex" style="display: none;">
+    </div>
+
+    <div class="split-container" id="mainEditor">
+        <div class="editor-pane">
+            <div class="editor-header">
+                <span>main.tex</span>
+                <div class="editor-info">
+                    <span id="lineCount">Lines: 1</span>
+                    <span id="charCount">Chars: 0</span>
+                </div>
+            </div>
+            <div class="editor-content">
+                <div class="line-numbers" id="lineNumbers">1</div>
+                <textarea id="editor" spellcheck="false" placeholder="% Start writing your LaTeX document here...
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{graphicx}
+
+\begin{document}
+
+\title{My First Document}
+\author{Your Name}
+\date{\today}
+\maketitle
+
+\section{Introduction}
+This is a sample LaTeX document.
+
+\subsection{Math Example}
+The quadratic formula is:
+$$x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}$$
+
+\section{Conclusion}
+This is how you write in LaTeX!
+
+\end{document}
+"></textarea>
+            </div>
+        </div>
+
+        <div class="resizer"></div>
+
+        <div class="preview-pane">
+            <div class="preview-header">PDF Preview</div>
+            <div class="preview-container">
+                <div class="preview-placeholder">
+                    <h3>📄 No PDF yet</h3>
+                    <p>Click "Recompile (Ctrl+S)" to generate PDF</p>
+                    <p style="font-size: 0.85em; margin-top: 10px; color: #999;">
+                        Or enable auto-compile for live preview
+                    </p>
+                </div>
+                <div id="pdf-viewer">
+                    <embed id="pdf-embed" type="application/pdf">
+                </div>
+            </div>
+            <div class="error-panel" id="errorPanel">
+                <button class="error-close" onclick="closeErrorPanel()">×</button>
+                <div class="error-title">Compilation Error</div>
+                <div id="errorContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const editor = document.getElementById('editor');
+        const lineNumbers = document.getElementById('lineNumbers');
+        const mainEditor = document.getElementById('mainEditor');
+        const fileInput = document.getElementById('fileInput');
+        const compileStatus = document.getElementById('compileStatus');
+        const statusText = document.getElementById('statusText');
+        const pdfViewer = document.getElementById('pdf-viewer');
+        const pdfEmbed = document.getElementById('pdf-embed');
+        const errorPanel = document.getElementById('errorPanel');
+        const errorContent = document.getElementById('errorContent');
+        const compileBtn = document.getElementById('compileBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const autoCompile = document.getElementById('autoCompile');
+        const lineCount = document.getElementById('lineCount');
+        const charCount = document.getElementById('charCount');
+
+        let compileTimeout;
+        let currentPdfBlob = null;
+        const AUTOSAVE_KEY = 'latex_autosave';
+        const CORS_PROXY = 'https://corsproxy.io/?url=';
+
+        // Build a minimal POSIX tar archive containing one file
+        function createTar(filename, content) {
+            const enc = new TextEncoder();
+            const nameBytes = enc.encode(filename);
+            const contentBytes = enc.encode(content);
+
+            const header = new Uint8Array(512);
+            header.set(nameBytes.slice(0, 100), 0);          // filename
+            header.set(enc.encode('0000644\0'), 100);         // mode
+            header.set(enc.encode('0000000\0'), 108);         // uid
+            header.set(enc.encode('0000000\0'), 116);         // gid
+            header.set(enc.encode(contentBytes.length.toString(8).padStart(11, '0') + '\0'), 124); // size
+            header.set(enc.encode(Math.floor(Date.now() / 1000).toString(8).padStart(11, '0') + '\0'), 136); // mtime
+            header.fill(0x20, 148, 156);                      // checksum placeholder = spaces
+            header[156] = 0x30;                               // typeflag '0' = regular file
+
+            let checksum = 0;
+            for (let b of header) checksum += b;
+            header.set(enc.encode(checksum.toString(8).padStart(6, '0') + '\0 '), 148);
+
+            const padded = Math.ceil(contentBytes.length / 512) * 512 || 512;
+            const contentPad = new Uint8Array(padded);
+            contentPad.set(contentBytes);
+
+            const result = new Uint8Array(512 + padded + 1024); // +1024 = two zero end-blocks
+            result.set(header, 0);
+            result.set(contentPad, 512);
+            return result;
+        }
+
+        // Initialize
+        function init() {
+            // Try to load autosaved content
+            const saved = localStorage.getItem(AUTOSAVE_KEY);
+            if (saved) {
+                editor.value = saved;
+            } else {
+                editor.value = editor.getAttribute('placeholder');
+            }
+            startNew();
+
+            // Setup listeners
+            editor.addEventListener('input', handleEditorInput);
+            editor.addEventListener('scroll', syncScroll);
+            editor.addEventListener('keydown', handleShortcuts);
+            fileInput.addEventListener('change', handleFileSelect);
+            setupResizer();
+
+            // Update line numbers initially
+            updateLineNumbers();
+        }
+
+        function startNew() {
+            editor.focus();
+            updateStats();
+        }
+
+        function handleEditorInput() {
+            updateLineNumbers();
+            updateStats();
+            localStorage.setItem(AUTOSAVE_KEY, editor.value);
+
+            if (autoCompile.checked) {
+                clearTimeout(compileTimeout);
+                compileTimeout = setTimeout(compileLatex, 2000); // Auto-compile after 2s
+            }
+        }
+
+        function updateLineNumbers() {
+            const lines = editor.value.split('\n').length;
+            lineNumbers.innerHTML = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
+        }
+
+        function updateStats() {
+            const lines = editor.value.split('\n').length;
+            const chars = editor.value.length;
+            lineCount.textContent = `Lines: ${lines}`;
+            charCount.textContent = `Chars: ${chars}`;
+        }
+
+        function syncScroll() {
+            lineNumbers.scrollTop = editor.scrollTop;
+        }
+
+        async function compileLatex() {
+            const latexCode = editor.value.trim();
+            if (!latexCode) { showStatus('error', 'Editor is empty'); return; }
+
+            console.log('Starting compilation...');
+            showStatus('compiling', 'Compiling...');
+            compileBtn.disabled = true;
+            closeErrorPanel();
+
+            try {
+                // Package LaTeX source into a tar, POST to latexonline.cc /data endpoint
+                const tarData = createTar('main.tex', latexCode);
+                const formData = new FormData();
+                formData.append('file', new Blob([tarData], { type: 'application/x-tar' }), 'latex.tar');
+
+                const targetUrl = 'https://latexonline.cc/data?target=main.tex';
+                const proxyUrl = `${CORS_PROXY}${encodeURIComponent(targetUrl)}`;
+
+                const response = await fetch(proxyUrl, { method: 'POST', body: formData });
+                console.log('Response status:', response.status);
+
+                if (!response.ok) {
+                    let errText = 'Unknown error';
+                    try { errText = await response.text(); } catch (e) { }
+                    throw new Error(`Compilation failed (${response.status}): ${errText.substring(0, 300)}`);
+                }
+
+                const pdfBlob = await response.blob();
+                console.log('Received blob — type:', pdfBlob.type, 'size:', pdfBlob.size);
+
+                if (!pdfBlob.type.includes('pdf')) {
+                    const text = await pdfBlob.text();
+                    throw new Error(text || 'Compilation failed — check LaTeX syntax');
+                }
+
+                currentPdfBlob = pdfBlob;
+                if (pdfEmbed.src && pdfEmbed.src.startsWith('blob:')) URL.revokeObjectURL(pdfEmbed.src);
+
+                pdfEmbed.src = URL.createObjectURL(pdfBlob);
+                pdfViewer.style.display = 'block';
+                document.querySelector('.preview-placeholder').style.display = 'none';
+                downloadBtn.style.display = 'flex';
+                showStatus('success', 'Compiled successfully');
+
+            } catch (error) {
+                console.error('Compilation error:', error);
+                showStatus('error', 'Compilation failed');
+                showError(error.message || error.toString());
+            } finally {
+                compileBtn.disabled = false;
+            }
+        }
+
+        function showStatus(type, message) {
+            compileStatus.className = 'compile-status show ' + type;
+            statusText.textContent = message;
+
+            if (type === 'compiling') {
+                statusText.innerHTML = '<div class="spinner"></div> Compiling...';
+            }
+
+            if (type === 'success' || type === 'error') {
+                setTimeout(() => {
+                    compileStatus.classList.remove('show');
+                }, 3000);
+            }
+        }
+
+        function showError(message) {
+            errorContent.textContent = message;
+            errorPanel.classList.add('show');
+        }
+
+        function closeErrorPanel() {
+            errorPanel.classList.remove('show');
+        }
+
+        function downloadPDF() {
+            if (!currentPdfBlob) return;
+
+            const url = URL.createObjectURL(currentPdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'document.pdf';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function loadFile() {
+            fileInput.click();
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                editor.value = event.target.result;
+                startNew();
+                updateLineNumbers();
+                updateStats();
+                if (autoCompile.checked) {
+                    setTimeout(compileLatex, 500);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function downloadLatex() {
+            const content = editor.value;
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'main.tex';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function handleShortcuts(e) {
+            // Ctrl/Cmd + S to compile
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                compileLatex();
+            }
+
+            // Tab key
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = editor.selectionStart;
+                const end = editor.selectionEnd;
+                editor.value = editor.value.substring(0, start) + '    ' + editor.value.substring(end);
+                editor.selectionStart = editor.selectionEnd = start + 4;
+                handleEditorInput();
+            }
+        }
+
+        // Resizer functionality
+        function setupResizer() {
+            const resizer = document.querySelector('.resizer');
+            const editorPane = document.querySelector('.editor-pane');
+            const previewPane = document.querySelector('.preview-pane');
+            let isResizing = false;
+
+            resizer.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+
+                const containerWidth = document.querySelector('.split-container').offsetWidth;
+                const newWidth = (e.clientX / containerWidth) * 100;
+
+                if (newWidth > 20 && newWidth < 80) {
+                    editorPane.style.width = newWidth + '%';
+                    previewPane.style.width = (100 - newWidth) + '%';
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                isResizing = false;
+                document.body.style.cursor = 'default';
+                document.body.style.userSelect = 'auto';
+            });
+        }
+
+        // Initialize on load
+        window.addEventListener('load', init);
+
+        // Cleanup on unload
+        window.addEventListener('beforeunload', (e) => {
+            if (editor.value && editor.value !== localStorage.getItem(AUTOSAVE_KEY)) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+    </script>
+</body>
+
+</html>

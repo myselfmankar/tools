@@ -2,5 +2,6 @@
 
 Select a tool from the list below:
 
-- **[Markdown to PDF](./md2pdf/md2pdf.html)**
-- **[Fahh Button](./fahhh/fahhh.html)**
+- **[Markdown to PDF](./md2pdf/index.html)**
+- **[Fahh Button](./fahhh/index.html)**
+- **[LaTeX to PDF](./latex2pdf/index.html)**
